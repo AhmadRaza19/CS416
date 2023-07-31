@@ -1,1 +1,379 @@
-<h1>Hello</h1>
+<!DOCTYPE html>
+<html>
+<script src="http://d3js.org/d3.v5.min.js" charset="utf-8"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.5.1/d3-annotation.min.js"></script>
+<H1>Narrative Visualization Project - CS 416 - Ahmad Raza</H1>
+<body onload='init()'>
+<svg width=600 height=600 style="border:solid;" id="svg"></svg>
+<svg width=600 height=600 style="border:solid;" id="svg2">
+</svg>
+<script>
+// Global Vars
+let i = 0
+var curr
+const colors = new Map() // Ref: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map DA:7/28
+colors.set('blue', 'lightblue')
+colors.set('red', 'pink')
+colors.set('green', 'lightgreen')
+colors.set('purple', '#b37cf2')
+colors.set('orange', '#f2c37c')
+colors.set('brown', '#ded2a9')
+colors.set('#081c73', '#475aa1')
+colors.set("#34ebeb", "#053838")
+const r_colors = new Map()
+r_colors.set('lightblue', 'blue')
+r_colors.set('pink', 'red')
+r_colors.set('lightgreen', 'green')
+r_colors.set('#b37cf2', 'purple')
+r_colors.set('#f2c37c', 'orange')
+r_colors.set('#ded2a9', 'brown')
+r_colors.set('#475aa1', '#081c73')
+r_colors.set("#053838", "#34ebeb")
+
+
+var winners = new Map()
+winners.set(1, "Italy")
+winners.set(2, "Argentina")
+winners.set(3, "(West) Germany")
+winners.set(4, "Brazil")
+winners.set(5, "France")
+winners.set(6, "Brazil")
+winners.set(7, "Italy")
+winners.set(8, "Spain")
+winners.set(9, "Germany")
+
+const dats = new Map()
+const rdats = new Map()
+var final
+var s_final
+var grpa
+var grpb
+var grpc
+var grpd
+var grpe
+var grpf
+var wcs_new
+var x
+var y_new
+var scale_y
+
+var clicked = false // Ref: https://stackoverflow.com/questions/38412168/how-can-we-detect-left-click-on-path, DA: 7/28
+var temp
+var first = true
+
+var currdata
+
+var rev_y = d3.scaleLinear().domain([3,10]).range([2109723, 3587538])
+
+var mp
+var mp_x
+
+async function init() {
+    console.log("Here")
+    const wcs = await d3.csv("https://gist.githubusercontent.com/AhmadRaza19/5bb022ff3986c0e3173c9bbaa053594e/raw/1339a0d5648affa1b964680a017cb89c3b90b21a/WorldCups.csv")
+    const players = await d3.csv("https://gist.githubusercontent.com/AhmadRaza19/2b7a76ca6e3b8268aedfc05b16645656/raw/95e46cc6a1f74648c66090a181d37332a475fa01/WorldCupPlayers.csv")
+    const matches = await d3.csv("https://gist.githubusercontent.com/AhmadRaza19/3f6e87b8371a7a9b1849cb44a063bdcf/raw/e0ae58f6a69ee1dd50c0437e7cbecb17ee1d8253/WorldCupMatches.csv")
+    const matches_grouped = await d3.csv("https://gist.githubusercontent.com/AhmadRaza19/e0e80b91c2b058d3cde678c06e2f3c9d/raw/22441d47017ab297fb6a2a9b02b523c38708758b/WorldCupMatches_grouped.csv")
+
+    mp = wcs
+
+    final = matches_grouped.filter(function(d) {return d.Stage == "Final";})
+    var final2 = final
+    s_final = matches_grouped.filter(function(d) {return d.Stage == "Semi-finals";})
+    grpa = matches_grouped.filter(function(d) {return d.Stage == "Group A";})
+    grpb = matches_grouped.filter(function(d) {return d.Stage == "Group B";})
+    grpc = matches_grouped.filter(function(d) {return d.Stage == "Group C";})
+    grpd = matches_grouped.filter(function(d) {return d.Stage == "Group D";})
+    grpe = matches_grouped.filter(function(d) {return d.Stage == "Group E";})
+    grpf = matches_grouped.filter(function(d) {return d.Stage == "Group F";})
+    wcs_new = wcs.filter(function(d) {return d.Year > 1980.0;})
+
+
+    dats.set('blue', final)
+    dats.set('red', s_final)
+    dats.set('green', grpa)
+    dats.set('purple', grpb)
+    dats.set('orange', grpc)
+    dats.set('brown', grpd)
+    dats.set('#081c73', grpe)
+    dats.set("#34ebeb", grpf)
+
+    rdats.set('lightblue', final)
+    rdats.set('pink', s_final)
+    rdats.set('lightgreen', grpa)
+    rdats.set('#b37cf2', grpb)
+    rdats.set('#f2c37c', grpc)
+    rdats.set('#ded2a9', grpd)
+    rdats.set('#475aa1', grpe)
+    rdats.set("#053838", grpf)
+
+    // Misc Scales and Axis
+    x = d3.scaleLinear().domain([1982,2014]).range([0, 500])
+    rev_x = d3.scaleLinear().domain([0,500]).range([1982,2014])
+    x2 = d3.scaleBand().domain([1982,1986,1990,1994,1998,2002,2006,2010,2014]).range([0, 500]) // Ref : https://www.geeksforgeeks.org/d3-js-band-bandwidth-function/, DA: 7/29
+    var y = d3.scaleLinear().domain([2109723, 3587538]).range([400,0])
+    scale_y = d3.scaleLinear().domain([2109723, 3587538]).range([3,10])
+    var yy = d3.scaleLinear().domain([2109723, 3400000]).range([500,0])
+    y_new = d3.scaleLinear().domain([1, 36]).range([400,0])
+    var y_new2 = d3.scaleLinear().domain([0, 36]).range([410,0])
+    var y_new22 = d3.scaleLinear().domain([0, 36]).range([500,0])
+    var left = d3.axisLeft().scale(y_new2).tickFormat(function(d) {return d.toString();}) // Gen AI Google Code, DA: 7/25/2023
+    var left2 = d3.axisLeft().scale(y_new22).tickFormat(function(d) {return d.toString();}) // Gen AI Google Code, DA: 7/25/2023
+    var bottom = d3.axisBottom().scale(x).tickValues([1982,1986,1990,1994,1998,2002,2006,2010,2014]).tickFormat(function(d) {return d.toString();}) // Gen AI Google Code, DA: 7/25/2023
+    var bottom2 = d3.axisBottom().scale(x2).tickFormat(function(d) {return d.toString();})
+    mp_x = rev_x
+
+    // Main SVG 1 Graph
+    d3.select('body').select('svg').append('path').datum(final).attr('fill', 'none').attr('stroke', 'blue').attr('stroke-width', 4).attr('pointer-events', 'visibleStroke').attr('d', d3.line().x(function(d) {return x(parseInt(d.Year))}).y(function(d) {return y_new(parseInt(d.Total_Goals))})).attr('transform', 'translate(50,83.33)').style('opacity', 1).on('mouseover', opac).on('mouseout', opac_done).on('click', opac2) // Ref: https://d3-graph-gallery.com/graph/line_basic.html DA: 7/25/2023
+    d3.select('body').select('svg').selectAll('g').data(final).enter().append('circle').attr('class', 'point').attr('cx', function(d) {return x(parseInt(d.Year))}).attr('cy', function(d) {return y_new(parseInt(d.Total_Goals))}).attr('stroke', 'lightblue').attr('fill', 'lightblue').data(wcs_new).attr('r', function(d) {return scale_y(d.Attendance)}).attr('transform', 'translate(50,83.33)').style('opacity', 1).on('mouseover', opac).on('mouseout', opac_done) // Ref: https://observablehq.com/@d3/click-vs-drag, https://d3-graph-gallery.com/graph/basic_datamanipulation.html, DA: 7/25/2023    
+    d3.select('body').select('svg').append('path').datum(s_final).attr('fill', 'none').attr('stroke', 'red').attr('stroke-width', 4).attr('pointer-events', 'visibleStroke').attr('d', d3.line().x(function(d) {return x(parseInt(d.Year))}).y(function(d) {return y_new(parseInt(d.Total_Goals))})).attr('transform', 'translate(50,83.33)').style('opacity', 0.2).on('mouseover', opac).on('mouseout', opac_done).on('click', opac2) // Ref: https://d3-graph-gallery.com/graph/line_basic.html DA: 7/25/2023
+    d3.select('body').select('svg').selectAll('g').data(s_final).enter().append('circle').attr('class', 'point').attr('cx', function(d) {return x(parseInt(d.Year))}).attr('cy', function(d) {return y_new(parseInt(d.Total_Goals))}).attr('stroke', 'pink').attr('fill', 'pink').data(wcs_new).attr('r', function(d) {return scale_y(d.Attendance)}).attr('transform', 'translate(50,83.33)').style('opacity', 0).on('mouseover', opac).on('mouseout', opac_done)
+    d3.select('body').select('svg').append('path').datum(grpa).attr('fill', 'none').attr('stroke', 'green').attr('stroke-width', 4).attr('pointer-events', 'visibleStroke').attr('d', d3.line().x(function(d) {return x(parseInt(d.Year))}).y(function(d) {return y_new(parseInt(d.Total_Goals))})).attr('transform', 'translate(50,83.33)').style('opacity', 0.2).on('mouseover', opac).on('mouseout', opac_done).on('click', opac2) // Ref: https://d3-graph-gallery.com/graph/line_basic.html DA: 7/25/2023
+    d3.select('body').select('svg').selectAll('g').data(grpa).enter().append('circle').attr('class', 'point').attr('cx', function(d) {return x(parseInt(d.Year))}).attr('cy', function(d) {return y_new(parseInt(d.Total_Goals))}).attr('stroke', 'lightgreen').attr('fill', 'lightgreen').data(wcs_new).attr('r', function(d) {return scale_y(d.Attendance)}).attr('transform', 'translate(50,83.33)').style('opacity', 0).on('mouseover', opac).on('mouseout', opac_done)
+    d3.select('body').select('svg').append('path').datum(grpb).attr('fill', 'none').attr('stroke', 'purple').attr('stroke-width', 4).attr('pointer-events', 'visibleStroke').attr('d', d3.line().x(function(d) {return x(parseInt(d.Year))}).y(function(d) {return y_new(parseInt(d.Total_Goals))})).attr('transform', 'translate(50,83.33)').style('opacity', 0.2).on('mouseover', opac).on('mouseout', opac_done).on('click', opac2) // Ref: https://d3-graph-gallery.com/graph/line_basic.html DA: 7/25/2023
+    d3.select('body').select('svg').selectAll('g').data(grpb).enter().append('circle').attr('class', 'point').attr('cx', function(d) {return x(parseInt(d.Year))}).attr('cy', function(d) {return y_new(parseInt(d.Total_Goals))}).attr('stroke', '#b37cf2').attr('fill', '#b37cf2').data(wcs_new).attr('r', function(d) {return scale_y(d.Attendance)}).attr('transform', 'translate(50,83.33)').style('opacity', 0).on('mouseover', opac).on('mouseout', opac_done)
+    d3.select('body').select('svg').append('path').datum(grpc).attr('fill', 'none').attr('stroke', 'orange').attr('stroke-width', 4).attr('pointer-events', 'visibleStroke').attr('d', d3.line().x(function(d) {return x(parseInt(d.Year))}).y(function(d) {return y_new(parseInt(d.Total_Goals))})).attr('transform', 'translate(50,83.33)').style('opacity', 0.2).on('mouseover', opac).on('mouseout', opac_done).on('click', opac2) // Ref: https://d3-graph-gallery.com/graph/line_basic.html DA: 7/25/2023
+    d3.select('body').select('svg').selectAll('g').data(grpc).enter().append('circle').attr('class', 'point').attr('cx', function(d) {return x(parseInt(d.Year))}).attr('cy', function(d) {return y_new(parseInt(d.Total_Goals))}).attr('stroke', '#f2c37c').attr('fill', '#f2c37c').data(wcs_new).attr('r', function(d) {return scale_y(d.Attendance)}).attr('transform', 'translate(50,83.33)').style('opacity', 0).on('mouseover', opac).on('mouseout', opac_done)
+    d3.select('body').select('svg').append('path').datum(grpd).attr('fill', 'none').attr('stroke', 'brown').attr('stroke-width', 4).attr('pointer-events', 'visibleStroke').attr('d', d3.line().x(function(d) {return x(parseInt(d.Year))}).y(function(d) {return y_new(parseInt(d.Total_Goals))})).attr('transform', 'translate(50,83.33)').style('opacity', 0.2).on('mouseover', opac).on('mouseout', opac_done).on('click', opac2) // Ref: https://d3-graph-gallery.com/graph/line_basic.html DA: 7/25/2023
+    d3.select('body').select('svg').selectAll('g').data(grpd).enter().append('circle').attr('class', 'point').attr('cx', function(d) {return x(parseInt(d.Year))}).attr('cy', function(d) {return y_new(parseInt(d.Total_Goals))}).attr('stroke', '#ded2a9').attr('fill', '#ded2a9').data(wcs_new).attr('r', function(d) {return scale_y(d.Attendance)}).attr('transform', 'translate(50,83.33)').style('opacity', 0).on('mouseover', opac).on('mouseout', opac_done)
+    d3.select('body').select('svg').append('path').datum(grpe).attr('fill', 'none').attr('stroke', '#081c73').attr('stroke-width', 4).attr('pointer-events', 'visibleStroke').attr('d', d3.line().x(function(d) {return x(parseInt(d.Year))}).y(function(d) {return y_new(parseInt(d.Total_Goals))})).attr('transform', 'translate(50,83.33)').style('opacity', 0.2).on('mouseover', opac).on('mouseout', opac_done).on('click', opac2) // Ref: https://d3-graph-gallery.com/graph/line_basic.html DA: 7/25/2023
+    d3.select('body').select('svg').selectAll('g').data(grpe).enter().append('circle').attr('class', 'point').attr('cx', function(d) {return x(parseInt(d.Year))}).attr('cy', function(d) {return y_new(parseInt(d.Total_Goals))}).attr('stroke', '#475aa1').attr('fill', '#475aa1').data(wcs_new).attr('r', function(d) {return scale_y(d.Attendance)}).attr('transform', 'translate(50,83.33)').style('opacity', 0).on('mouseover', opac).on('mouseout', opac_done)
+    d3.select('body').select('svg').append('path').datum(grpf).attr('fill', 'none').attr('stroke', '#34ebeb').attr('stroke-width', 4).attr('pointer-events', 'visibleStroke').attr('d', d3.line().x(function(d) {return x(parseInt(d.Year))}).y(function(d) {return y_new(parseInt(d.Total_Goals))})).attr('transform', 'translate(50,83.33)').style('opacity', 0.2).on('mouseover', opac).on('mouseout', opac_done).on('click', opac2) // Ref: https://d3-graph-gallery.com/graph/line_basic.html DA: 7/25/2023
+    d3.select('body').select('svg').selectAll('g').data(grpf).enter().append('circle').attr('class', 'point').attr('cx', function(d) {return x(parseInt(d.Year))}).attr('cy', function(d) {return y_new(parseInt(d.Total_Goals))}).attr('stroke', '#053838').attr('fill', '#053838').data(wcs_new).attr('r', function(d) {return scale_y(d.Attendance)}).attr('transform', 'translate(50,83.33)').style('opacity', 0).on('mouseover', opac).on('mouseout', opac_done)
+
+    d3.select("body").select('svg').append("g").attr("transform", "translate(49,82)").call(left) // Ref: https://www.geeksforgeeks.org/d3-js-axis-tickvalues-function/
+    d3.select("body").select('svg').append("g").attr("transform", "translate(50,500)").call(bottom)
+
+    var h_ = d3.scaleLinear().domain([0,24]).range([0, 400])
+    var y_ = d3.scaleLinear().domain([0,24]).range([400,0])
+    var x_ = d3.scaleLinear().domain([0,9]).range([0,500])
+
+    // Main SVG 2 Graph
+    currdata = final
+    d3.select('body').select('#svg2').selectAll('g').data(currdata).enter().append('rect').attr('width', function(d) {return x2.bandwidth()}).attr('height', function(d) {return h_(parseInt(d['Home Team Goals']))}).attr('x', function(d, i) {return x_(parseInt(i))}).attr('y', function(d) {return y_(parseInt(d['Home Team Goals']))}).attr('fill', 'blue').attr('transform', 'translate(50,100)').on('mouseover', ann_on).on('mouseout', ann_off)
+    d3.select("body").select('#svg2').append("g").attr("transform", "translate(49,0)").call(left2) // Ref: https://www.geeksforgeeks.org/d3-js-axis-tickvalues-function/
+    d3.select("body").select('#svg2').append("g").attr("transform", "translate(50,500)").call(bottom2)
+
+    
+    // Extra Additions to Both
+    //Ref : http://www.d3noob.org/2016/08/changing-text-size-for-axes-in-d3js-v4.html, DA: 7/30
+    d3.select("body").select("svg").append("text").text("Total Goals Scored Per Group Every Year").attr('x', 150).attr('y', 550)
+    d3.select("body").select("svg").append("text").text("(colors = groups, size = attendance, hover for more detail)").attr('x', 170).attr('y', 570).style("font", "10px times")
+
+    d3.select("body").select("#svg2").append("text").text("Home Team Goals Scored For Selected Group Every Year").attr('x', 140).attr('y', 550)
+    d3.select("body").select("#svg2").append("text").text("(hover for more detail)").attr('x', 270).attr('y', 570).style("font", "10px times")
+
+    // Legend/Key
+    d3.select("body").select("svg").append('rect').attr('x', 500).attr('y', 75).attr('width', 10).attr("height", 10).attr("fill", "blue")
+    d3.select("body").select("svg").append("text").text('Finals').attr('x', 515).attr('y', 85).style('font', "14px times")
+    d3.select("body").select("svg").append('rect').attr('x', 500).attr('y', 90).attr('width', 10).attr("height", 10).attr("fill", "red")
+    d3.select("body").select("svg").append("text").text('Semi-Finals').attr('x', 515).attr('y', 100).style('font', "14px times")
+    d3.select("body").select("svg").append('rect').attr('x', 500).attr('y', 105).attr('width', 10).attr("height", 10).attr("fill", "green")
+    d3.select("body").select("svg").append("text").text('Group A').attr('x', 515).attr('y', 115).style('font', "14px times")
+    d3.select("body").select("svg").append('rect').attr('x', 500).attr('y', 120).attr('width', 10).attr("height", 10).attr("fill", "purple")
+    d3.select("body").select("svg").append("text").text('Group B').attr('x', 515).attr('y', 130).style('font', "14px times")
+    d3.select("body").select("svg").append('rect').attr('x', 500).attr('y', 135).attr('width', 10).attr("height", 10).attr("fill", "orange")
+    d3.select("body").select("svg").append("text").text('Group C').attr('x', 515).attr('y', 145).style('font', "14px times")
+    d3.select("body").select("svg").append('rect').attr('x', 500).attr('y', 150).attr('width', 10).attr("height", 10).attr("fill", "brown")
+    d3.select("body").select("svg").append("text").text('Group D').attr('x', 515).attr('y', 160).style('font', "14px times")
+    d3.select("body").select("svg").append('rect').attr('x', 500).attr('y', 165).attr('width', 10).attr("height", 10).attr("fill", "#081c73")
+    d3.select("body").select("svg").append("text").text('Group E').attr('x', 515).attr('y', 175).style('font', "14px times")
+    d3.select("body").select("svg").append('rect').attr('x', 500).attr('y', 180).attr('width', 10).attr("height", 10).attr("fill", "#34ebeb")
+    d3.select("body").select("svg").append("text").text('Group F').attr('x', 515).attr('y', 190).style('font', "14px times")
+    d3.select("body").select("svg").append('circle').attr('class', 'legend').attr('cx', 505).attr('cy', 205).attr('r', 5).attr("stroke", "black").attr("fill", "none")
+    d3.select("body").select("svg").append("text").text('Attendance').attr('x', 515).attr('y', 210).style('font', "14px times")
+}
+
+
+// Hover On for SVG 2 - Annotations + Map of Winning Country
+function ann_on(event, d) {
+    imgs = new Map()
+    imgs.set('Italy', "https://geology.com/world/italy-map.gif")
+    imgs.set("Argentina", "https://geology.com/world/argentina-map.gif")
+    imgs.set("Spain", "https://geology.com/world/spain-map.gif")
+    imgs.set("Germany", "https://geology.com/world/germany-map.gif")
+    imgs.set("Brazil", "https://geology.com/world/brazil-map.gif")
+    imgs.set("France", "https://geology.com/world/france-map.gif")
+    imgs.set("(West) Germany", "https://geology.com/world/germany-map.gif")
+
+    var temp = Math.round(parseInt(d3.select(this).attr('x')) / 55.5555) + 1
+    var str = winners.get(parseInt(temp))
+    c = colors.get(d3.select(this).attr('fill'))
+    console.log(d3.select(this).attr('fill'))
+    console.log(typeof d3.select(this).attr('fill'))
+    console.log(c)
+    if (d3.select(this).attr('x') > 250) {
+        t = 80
+        t2 = 100
+        s = -30
+        s2 = -30
+    } else {
+        t = 80
+        t2 = 100
+        s = -50
+        s2 = 50
+    }
+
+    // This is an edge case for the largest yellow bar because it was going out of screen
+    if (parseInt(d3.select(this).attr('y')) + t2 < 150) {
+        t2 = 150
+    }
+    console.log(parseInt(d3.select(this).attr('y')) + t2)
+    const anno = [
+        {
+            note : {
+                label : "World Cup Winner: " + str,
+                title: "Home Team Goals: " + Math.round(parseInt(d3.select(this).attr('height')) / 16.666666) 
+            },
+            connector : {
+                end: "arrow",
+            },
+            color : ["#888294"],
+            x : parseInt(d3.select(this).attr('x')) + t,
+            y : parseInt(d3.select(this).attr('y')) + t2,
+            dy : s,
+            dx : s2
+        }
+
+    ]
+    var makeanno = d3.annotation().annotations(anno)
+    d3.select('body').select('#svg2').append('g').attr('class', 'annotations').call(makeanno)
+
+    im = imgs.get(str)
+    //Ref: https://www.fabiofranchino.com/blog/how-to-load-image-in-svg-with-d3js/, DA:7/30
+    d3.select('body').select("#svg2").append('image').attr('xlink:href', im).attr('width', 200).attr('height', 200).attr('x', 400).attr('y', 10)
+}
+
+// Hover off for SVG 2
+function ann_off(event, d) {
+    d3.select('body').select('#svg2').selectAll('g.annotations').remove()
+    d3.select('body').select("#svg2").selectAll('image').remove()
+}
+
+
+// Hover On for SVG 1 - Annotations + Changing Opacity/Highlighting of Lines
+// Ref: https://stackoverflow.com/questions/59131994/how-to-change-the-opacity-of-a-node, DA:7/28/23
+function opac(event, d) {
+    if(d3.select(this).node().nodeName == 'path') {
+        var col = d3.select(this).attr('stroke')
+        var ind = colors.get(col)
+    } else {
+        var ind = d3.select(this).attr('stroke')
+        var col = r_colors.get(ind)
+    }
+
+    d3.select('body').select('svg').selectAll('path').filter(function() {return d3.select(this).attr('stroke') == col}).style('opacity', 1)
+    d3.select('body').select('svg').selectAll('circle.point').filter(function() {return d3.select(this).attr('stroke') == ind}).style('opacity', 1)
+
+    ds = dats.get(col)
+    stage = ds[0]["Stage"]
+    d3.select('body').select('svg').append("text").text("Stage: " + stage).attr('class', 'txt').attr('x', 275).attr('y', 30)
+
+    if(d3.select(this).node().nodeName == 'path') {
+        return
+    }
+
+    s = rev_y(d3.select(this).attr('r'))
+    cx = mp_x(d3.select(this).attr('cx'))
+    var mp_ = mp.filter(function (d) {return parseInt(d.Year) == parseInt(cx)})
+
+    const anno = [
+        {
+            note : {
+                label : "Matches Played: " + mp_[0]['MatchesPlayed'],
+                title: "Attendance: " + s
+            },
+            color : ["#888294"],
+            x : 275,
+            y : 100,
+            dy : 0,
+            dx : 0
+        }
+    ]
+    var new_anno = d3.annotation().annotations(anno)
+    d3.select('body').select('svg').append('g').attr('class', 'annotations').call(new_anno)
+
+}
+
+// Hover Off for SVG 1 - Returning Opacity to original + resetting annotations
+function opac_done(event, d) {
+    if (first) {
+        d3.select('body').select('svg').selectAll('path').filter(function() {return (d3.select(this).attr('stroke') != temp) && (d3.select(this).attr('stroke') != 'blue')}).style('opacity', 0.2)
+        d3.select('body').select('svg').selectAll('circle.point').filter(function() {return d3.select(this).attr('stroke') != colors.get(temp) && (d3.select(this).attr('stroke') != 'lightblue')}).style('opacity', 0)
+        d3.select('body').select('svg').selectAll('g.annotations').remove()
+        d3.select('body').select('svg').selectAll('text.txt').remove()
+        return;
+    }
+
+    d3.select('body').select('svg').selectAll('path').filter(function() {return d3.select(this).attr('stroke') != temp}).style('opacity', 0.2)
+    d3.select('body').select('svg').selectAll('circle.point').filter(function() {return d3.select(this).attr('stroke') != colors.get(temp)}).style('opacity', 0)
+    d3.select('body').select('svg').selectAll('g.annotations').remove()
+    d3.select('body').select('svg').selectAll('text.txt').remove()
+
+}
+
+
+// Click event for SVG 1, changes opacity and updates other lines accordingly
+function opac2(event, d) {
+    clicked = true
+    first = false
+    temp = d3.select(this).attr('stroke')
+    console.log(temp)
+    d3.select('body').select('svg').selectAll('path').style('opacity', 0.2)
+    d3.select('body').select('svg').selectAll('circle.point').style('opacity', 0)
+
+    var new_dat
+    var h_ = d3.scaleLinear().domain([0,24]).range([0, 400])
+    var y_ = d3.scaleLinear().domain([0,24]).range([400,0])
+    var x_ = d3.scaleLinear().domain([0,9]).range([0,500])
+    var x2_ = d3.scaleBand().domain([1982,1986,1990,1994,1998,2002,2006,2010,2014]).range([0, 500])
+    //scale_height = d3.scaleLinear().domain([0,24]).range()
+    if(d3.select(this).node().nodeName == 'path') {
+        var col = d3.select(this).attr('stroke')
+        var ind = colors.get(col)
+        new_dat = dats.get(col)
+    } else {
+        var ind = d3.select(this).attr('stroke')
+        var col = r_colors.get(ind)
+        new_dat = rdats.get(col)
+    }
+
+    d3.select('body').select('svg').selectAll('path').filter(function() {return d3.select(this).attr('stroke') == col}).style('opacity', 1)
+    d3.select('body').select('svg').selectAll('circle.point').filter(function() {return d3.select(this).attr('stroke') == ind}).style('opacity', 1)
+
+    currdata = new_dat
+    console.log(new_dat[0]['Home Team Goals'])
+
+
+    // Ref: https://stackoverflow.com/questions/20644415/d3-appending-text-to-a-svg-rectangle, DA: 7/28
+    d3.select('body').select("#svg2").selectAll('rect').transition().duration(1500).attr('width', x2_.bandwidth()).attr('height', function(d, i) {return h_(parseInt(currdata[i]['Home Team Goals']))}).attr('x', function(d, i) {return x_(parseInt(i))}).attr('y', function(d, i) {return y_(parseInt(currdata[i]['Home Team Goals']))}).attr('fill', col).attr('transform', 'translate(50,100)').on('mouseover', ann_on).on('mouseout', ann_off)
+}
+
+
+
+// Ref: https://www.stator-afm.com/tutorial/d3-js-mouse-events/, DA: 7/25/2023, Not used
+// function clickOut(event, d) {
+//     d3.select(this).transition().attr('r', d3.select(this).attr('r') / 2)
+// }
+
+// Ref: https://observablehq.com/@d3/click-vs-drag, DA: 7/25/2023, Not used
+// function clickEvent(event, d) {
+//     if (curr != undefined && curr != this) {
+//         return
+//     }
+//     if (i == 0) {
+//         d3.select(this).transition().attr('r', d3.select(this).attr('r') * 2) // Ref: https://observablehq.com/@d3/click-vs-drag, DA: 7/25/2023
+//         d3.select(this).attr('stroke', 'black')
+//         curr = this
+//     }
+//     else {
+//         d3.select(this).transition().attr('r', d3.select(this).attr('r') / 2)
+//         d3.select(this).attr('stroke', d3.select(this).attr('fill'))
+//         curr = undefined
+//     }
+//     i = !i
+// }
+
+</script>
+</body>
+</html>
